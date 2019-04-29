@@ -25,7 +25,6 @@ MODELS = {
 DATASETS = {
     "cifar10": (tf.keras.datasets.cifar10, 10),
     "cifar100": (tf.keras.datasets.cifar100, 100),
-    "fashionmnist": (tf.keras.datasets.fashion_mnist, 10), 
 }
 
 def data_generator(validation_split):
@@ -51,8 +50,6 @@ def run_model(args):
 
     batch_size = args.batch_size 
     keras_model = MODELS.get(args.model)
-    steps_per_epoch = args.steps
-    epochs=args.epochs
 
     validation_split = args.val_split
 
@@ -68,13 +65,13 @@ def run_model(args):
     model = keras_model(weights=None, include_top=True,
                                               input_shape=input_shape,
                                               classes=num_classes)
-    model.compile(optimizer='rmsprop', loss='categorical_crossentropy')
+    model.compile(optimizer='rmsprop', loss='categorical_crossentropy', metrics=['categorical_accuracy'])
     ImDataGen = data_generator(validation_split)
     training_data = ImDataGen.flow(train_images, train_labels, batch_size, subset="training")
     validation_data = ImDataGen.flow(train_images, train_labels, batch_size, subset="validation")
 
-    model.fit_generator(training_data, validation_data, steps_per_epoch,
-                           epochs, callbacks=get_callbacks(args))
+    model.fit_generator(training_data, validation_data=validation_data, steps_per_epoch=args.steps,
+                           epochs=args.epochs, callbacks=get_callbacks(args))
 
     model.evaluate(test_images, test_labels)
 
