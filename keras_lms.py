@@ -97,7 +97,6 @@ def run_model(args):
     run_metadata= tf.RunMetadata()
 
     data_dir = args.data_dir
-    val_freq = args.val_freq
     train_epochs = args.num_epochs
     val_epochs = 1
     keras_model = MODELS.get(args.model)
@@ -120,7 +119,6 @@ def run_model(args):
                        steps_per_epoch=train_steps,
                        callbacks=get_callbacks(args),
                        validation_data=val_data,
-                       validation_freq=val_freq,
                        verbose=2)
 
     trace = timeline.Timeline(step_stats=run_metadata.step_stats)
@@ -139,9 +137,6 @@ if __name__ == "__main__":
     parser.add_argument("--num_gpus", type=int,
                         default=1,
                         help='Number of gpu. (Default 1)')
-    parser.add_argument("--val_freq", type=int,
-                        default=16,
-                        help='epochs between evals. (Default 16)')
     parser.add_argument("--model", type=str,
                         default="resnet50",
                         choices=[i for i in MODELS.keys()],
