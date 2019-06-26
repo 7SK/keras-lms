@@ -4,9 +4,9 @@ from tensorflow.core.protobuf import rewriter_config_pb2
 from tensorflow.python.keras import backend as K
 from tensorflow.python.keras.callbacks import Callback
 
-from tensorflow.python.client import timeline
+#from tensorflow.python.client import timeline
 from official.resnet import imagenet_main
-from tensorflow_large_model_support import LMSKerasCallback
+#from tensorflow_large_model_support import LMSKerasCallback
 
 import os
 import multiprocessing
@@ -34,10 +34,11 @@ MODELS = {
 def get_callbacks(args):
     callbacks = []
     # Enable TFLMS
-    if args.lms:
-       lms = LMSKerasCallback(n_tensors=args.n_tensors, lb=args.lb,
-                              starting_op_names=None)
-       callbacks.append(lms)
+#   if args.lms:
+#       lms = LMSKerasCallback(n_tensors=args.n_tensors, lb=args.lb,
+#                              starting_op_names=None)
+#        callbacks.append(lms)
+    callbacks.append(tf.keras.callbacks.TensorBoard)
 
     return callbacks
 
@@ -55,7 +56,7 @@ def data_pipeline(data_dir, batch_size, is_training, dtype, num_epochs, input_co
 
     dataset = dataset.interleave(
               tf.data.TFRecordDataset,
-              cycle_length=10,
+#              cycle_length=10,
               num_parallel_calls=tf.data.experimental.AUTOTUNE)
 
     dataset = dataset.prefetch(buffer_size=tf.data.experimental.AUTOTUNE)
@@ -89,12 +90,12 @@ def parse_tfrecords(raw_record, is_training, dtype):
 
 def run_model(args):
     # Configure the memory optimizer
-    config = tf.ConfigProto()
+    config = tf.compat.v1.ConfigProto()
     config.graph_options.rewrite_options.memory_optimization = rewriter_config_pb2.RewriterConfig.SCHEDULING_HEURISTICS
-    K.set_session(tf.Session(config=config))
+    K.set_session(tf.compat.v1.Session(config=config))
 
-    run_options = tf.RunOptions(trace_level=tf.RunOptions.FULL_TRACE)
-    run_metadata= tf.RunMetadata()
+#   run_options = tf.RunOptions(trace_level=tf.RunOptions.FULL_TRACE)
+#   run_metadata= tf.RunMetadata()
 
     data_dir = args.data_dir
     val_freq = args.val_freq
@@ -106,26 +107,28 @@ def run_model(args):
 
     input_context = tf.distribute.InputContext(num_input_pipelines=args.num_gpus)
     train_data = data_pipeline(data_dir, args.batch_size, True, float, train_epochs,input_context)
-    val_data = data_pipeline(data_dir, args.batch_size, False, float, val_epochs, input_context)
+#    val_data = data_pipeline(data_dir, args.batch_size, False, float, val_epochs, input_context)
 
-#    strategy = tf.distribute.MirroredStrategy()
+    strategy = tf.distribute.MirroredStrategy()
 
-#    with strategy.scope():
-    model = keras_model(weights=None, include_top=True,
+    with strategy.scope():
+        parallel_model = keras_model(weights=None, include_top=True,
                             input_shape=[224,224,3], classes=1000)
-    parallel_model = tf.keras.utils.multi_gpu_model(model, gpus=args.num_gpus, cpu_merge=False)
-    parallel_model.compile(optimizer='rmsprop', loss='sparse_categorical_crossentropy',    metrics=['sparse_categorical_accuracy'])
+        #parallel_model = tf.keras.utils.multi_gpu_model(model, gpus=args.num_gpus, cpu_merge=False)
+        parallel_model.compile(optimizer='rmsprop', loss='sparse_categorical_crossentropy', metrics=['sparse_categorical_accuracy'])
     parallel_model.fit(train_data,
                        epochs=train_epochs,
                        steps_per_epoch=train_steps,
                        callbacks=get_callbacks(args),
-                       validation_data=val_data,
-                       validation_freq=val_freq,
+#                      validation_steps=val_steps,
+#                      validation_data=val_data,
+#                      validation_freq=val_freq,
                        verbose=2)
 
-    trace = timeline.Timeline(step_stats=run_metadata.step_stats)
-    with open('/tmp/timeline.ctf.json', 'w') as trace_file:
-        trace_file.write(trace.generate_chrome_trace_format())
+#   tf.summary.trace_on
+#   trace = timeline.Timeline(step_stats=run_metadata.step_stats)
+#   with open('/tmp/timeline.ctf.json', 'w') as trace_file:
+#       trace_file.write(trace.generate_chrome_trace_format())
 #    model.save('mymodel.h5')
 
 if __name__ == "__main__":
