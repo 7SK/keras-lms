@@ -4,7 +4,7 @@ from tensorflow.core.protobuf import rewriter_config_pb2
 from tensorflow.python.keras import backend as K
 from tensorflow.python.keras.callbacks import Callback
 
-from tensorflow.python.client import timeline
+#from tensorflow.python.client import timeline
 from official.resnet import imagenet_main
 from tensorflow_large_model_support import LMSKerasCallback
 
@@ -98,14 +98,14 @@ def run_model(args):
 
     data_dir = args.data_dir
     train_epochs = args.num_epochs
-    val_epochs = 1
+#    val_epochs = 1
     keras_model = MODELS.get(args.model)
     train_steps = NUM_IMAGES['train'] // args.batch_size
-    val_steps = NUM_IMAGES['validation'] // args.batch_size
+#    val_steps = NUM_IMAGES['validation'] // args.batch_size
 
     input_context = tf.distribute.InputContext(num_input_pipelines=args.num_gpus)
     train_data = data_pipeline(data_dir, args.batch_size, True, float, train_epochs,input_context)
-    val_data = data_pipeline(data_dir, args.batch_size, False, float, val_epochs, input_context)
+#    val_data = data_pipeline(data_dir, args.batch_size, False, float, val_epochs, input_context)
 
 #    strategy = tf.distribute.MirroredStrategy()
 
@@ -113,17 +113,18 @@ def run_model(args):
     model = keras_model(weights=None, include_top=True,
                             input_shape=[224,224,3], classes=1000)
     parallel_model = tf.keras.utils.multi_gpu_model(model, gpus=args.num_gpus, cpu_merge=False)
-    parallel_model.compile(optimizer='rmsprop', loss='sparse_categorical_crossentropy',    metrics=['sparse_categorical_accuracy'])
+    parallel_model.compile(optimizer='rmsprop', loss='sparse_categorical_crossentropy',
+                           metrics=['sparse_categorical_accuracy'])
     parallel_model.fit(train_data,
                        epochs=train_epochs,
                        steps_per_epoch=train_steps,
                        callbacks=get_callbacks(args),
-                       validation_data=val_data,
+#                       validation_data=val_data,
                        verbose=2)
 
-    trace = timeline.Timeline(step_stats=run_metadata.step_stats)
-    with open('/tmp/timeline.ctf.json', 'w') as trace_file:
-        trace_file.write(trace.generate_chrome_trace_format())
+#    trace = timeline.Timeline(step_stats=run_metadata.step_stats)
+#    with open('/tmp/timeline.ctf.json', 'w') as trace_file:
+#        trace_file.write(trace.generate_chrome_trace_format())
 #    model.save('mymodel.h5')
 
 if __name__ == "__main__":
@@ -144,6 +145,9 @@ if __name__ == "__main__":
     parser.add_argument("--data_dir", type=str,
                         default=None,
                         help='data dir path. (Default: None)')
+    parser.add_argument("--num_gpus", type=int,
+                        default=1,
+                        help='Number of gpu. (Default 1)')
 
     # LMS parameters
     lms_group = parser.add_mutually_exclusive_group(required=False)
