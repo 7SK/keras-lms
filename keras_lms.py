@@ -100,7 +100,7 @@ def run_model(args):
     train_epochs = args.num_epochs
 #    val_epochs = 1
     keras_model = MODELS.get(args.model)
-    train_steps = NUM_IMAGES['train'] // args.batch_size
+    train_steps = 1000 #NUM_IMAGES['train'] // args.batch_size
 #    val_steps = NUM_IMAGES['validation'] // args.batch_size
 
     input_context = tf.distribute.InputContext(num_input_pipelines=args.num_gpus)
@@ -145,9 +145,6 @@ if __name__ == "__main__":
     parser.add_argument("--data_dir", type=str,
                         default=None,
                         help='data dir path. (Default: None)')
-    parser.add_argument("--num_gpus", type=int,
-                        default=1,
-                        help='Number of gpu. (Default 1)')
 
     # LMS parameters
     lms_group = parser.add_mutually_exclusive_group(required=False)
